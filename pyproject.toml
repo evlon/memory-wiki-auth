@@ -1,0 +1,15 @@
+[project]
+name = "wiki-auth"
+version = "1.0.0"
+description = "多维度知识共享授权层 —— Hindsight validator 扩展"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.29",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

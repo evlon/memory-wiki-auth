@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>维度管理台 · 多维度知识共享</title>
+<style>
+  :root{
+    --bg:#f3f6fb; --panel:#ffffff; --panel2:#f7f9fd; --line:#e3e9f2;
+    --fg:#1f2d3d; --dim:#7a8aa0; --accent:#1677ff; --accent-deep:#0e5fd8;
+    --ok:#16a34a; --ok-bg:#e8f7ee; --warn:#d97706; --warn-bg:#fdf3e3;
+    --err:#dc2626; --err-bg:#fdecec; --radius:10px;
+    --shadow:0 1px 3px rgba(16,42,84,.06),0 4px 16px rgba(16,42,84,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--fg)}
+  header{display:flex;align-items:center;gap:16px;padding:0 24px;height:56px;background:var(--panel);
+         border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:600;display:flex;align-items:center;gap:8px}
+  header .who{color:var(--dim);font-size:13px;margin-left:auto;display:flex;align-items:center;gap:8px}
+  header .who b{color:var(--fg)}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;line-height:1.5;
+         border:1px solid var(--line);background:var(--panel2);color:var(--dim)}
+  .badge.admin{border-color:var(--accent);color:var(--accent);background:#eaf3ff}
+  .badge.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+  .badge.warn{border-color:var(--warn);color:var(--warn);background:var(--warn-bg)}
+  .badge.err{border-color:var(--err);color:var(--err);background:var(--err-bg)}
+  nav{display:flex;gap:2px;padding:0 24px;flex-wrap:wrap;border-bottom:1px solid var(--line);
+      background:var(--panel)}
+  nav button{background:transparent;border:none;color:var(--dim);padding:13px 16px;cursor:pointer;
+             border-bottom:2px solid transparent;font-size:14px;font-family:inherit}
+  nav button:hover{color:var(--accent)}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  main{padding:24px;max-width:1280px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+        padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .card h2{font-size:15px;margin:0 0 14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card h2 .sub{color:var(--dim);font-weight:400;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:500;font-size:12px;background:var(--panel2)}
+  tr:hover td{background:var(--panel2)}
+  td.mono,th.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  button.btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;
+             cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+  button.btn:hover{background:var(--accent-deep)}
+  button.btn:active{transform:translateY(1px)}
+  button.btn.ghost{background:var(--panel);border:1px solid var(--line);color:var(--fg)}
+  button.btn.ghost:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
+  button.btn.danger{background:var(--err)}
+  button.btn.danger:hover{background:#b91c1c}
+  button.btn.sm{padding:4px 10px;font-size:12px}
+  button.btn:disabled{opacity:.5;cursor:not-allowed}
+  input,select,textarea{background:var(--panel);border:1px solid var(--line);color:var(--fg);
+       border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;width:100%}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(22,119,255,.12)}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .row>div{flex:1;min-width:150px}
+  label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px;font-weight:500}
+  .empty{color:var(--dim);padding:28px;text-align:center}
+  .toast{position:fixed;right:24px;bottom:24px;background:var(--panel);border:1px solid var(--line);
+         border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;max-width:420px;
+         box-shadow:0 8px 24px rgba(16,42,84,.16);display:none;z-index:100;font-size:13px}
+  .toast.show{display:block}
+  .toast.ok{border-left-color:var(--ok)}
+  .toast.err{border-left-color:var(--err)}
+  .hint{color:var(--dim);font-size:12px;margin-top:8px;line-height:1.6}
+  .login{max-width:440px;margin:64px auto}
+  .login .brand{text-align:center;margin-bottom:24px}
+  .login .brand .logo{font-size:40px;line-height:1}
+  .login .brand h1{font-size:20px;margin:10px 0 4px}
+  .login .brand p{color:var(--dim);margin:0;font-size:13px}
+  code{background:var(--panel2);padding:2px 6px;border-radius:4px;font-size:12px;color:#0e5fd8;
+       border:1px solid var(--line)}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:8px 16px;font-size:13px}
+  .kv .k{color:var(--dim)}
+  /* 首页引导区 */
+  .welcome{background:linear-gradient(135deg,#1677ff 0%,#0e5fd8 100%);color:#fff;
+           border-radius:var(--radius);padding:24px 28px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .welcome h2{margin:0 0 6px;font-size:18px}
+  .welcome p{margin:0;opacity:.92;font-size:13px;line-height:1.6}
+  .welcome .acts{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
+  .welcome .acts a,.welcome .acts button{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);
+       color:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;text-decoration:none;
+       font-family:inherit;font-weight:500}
+  .welcome .acts a:hover,.welcome .acts button:hover{background:rgba(255,255,255,.28)}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:16px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+        padding:18px 20px;box-shadow:var(--shadow)}
+  .stat .num{font-size:26px;font-weight:700;color:var(--accent)}
+  .stat .lbl{color:var(--dim);font-size:13px;margin-top:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧠 跨团队知识共享</h1>
+  <span class="badge" id="bankBadge">知识管理台</span>
+  <div class="who" id="whoBox">未登录</div>
+</header>
+
+<!-- 登录 -->
+<div id="loginView">
+  <div class="login card">
+    <div class="brand">
+      <div class="logo">🧠</div>
+      <h1>跨团队知识共享平台</h1>
+      <p>共建 · 共享 · 复用团队知识</p>
+    </div>
+
+    <!-- ⭐ 方式一：Keycloak 单点登录（推荐，符合浏览器常识） -->
+    <div id="oidcBox" style="display:none">
+      <p class="hint" style="margin-bottom:14px">
+        使用公司统一账号登录（Keycloak / LDAP）
+      </p>
+      <a class="btn" id="oidcBtn" href="/ext/oauth/login"
+         style="display:block;text-align:center;text-decoration:none">
+        🔐 用统一账号登录
+      </a>
+    </div>
+
+    <!-- 方式二：令牌（兼容脚本/CLI，或 OIDC 未启用时） -->
+    <div id="tokenBox">
+      <div id="oidcDivider" style="display:none;margin:18px 0;text-align:center;
+           color:var(--muted);font-size:12px">— 或使用令牌 —</div>
+      <label>管理令牌 或 HiMarket apikey</label>
+      <input id="tokenInput" type="password" placeholder="wikiadmin-... 或 apikey-..." autocomplete="off">
+      <div class="hint">平台管理员用管理令牌（可管所有维度）；维度管理员用 apikey（只能管自己负责的维度）</div>
+      <div style="margin-top:14px"><button class="btn" onclick="doLogin()">登录</button></div>
+    </div>
+
+    <div class="hint" id="loginErr" style="color:var(--err);margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="appView" style="display:none">
+  <nav>
+    <button data-tab="home" class="active">首页</button>
+    <button data-tab="requests">申请 / 审批</button>
+    <button data-tab="dims">维度</button>
+    <button data-tab="grants">授权</button>
+    <button data-tab="projects">项目 ↔ 产品</button>
+    <button data-tab="creds">凭据</button>
+    <button data-tab="audit">审计</button>
+  </nav>
+  <main>
+
+    <!-- 首页（引导 + 快捷入口 + 我的 apikey） -->
+    <section id="tab-home">
+      <div class="welcome">
+        <h2 id="welcomeTitle">你好 👋</h2>
+        <p id="welcomeDesc">这里是跨团队知识共享平台。你可以检索团队沉淀的知识，也可以把验证过的经验写进来，让知识在团队间流转复用。</p>
+        <div class="acts">
+          <a href="#requests" onclick="switchTab('requests')">📝 我要申请 / 待我审批</a>
+          <a href="#dims" onclick="switchTab('dims')">📂 浏览 / 新建维度</a>
+          <a href="https://ai.ict.cmcc/knowledge.html" target="_blank" rel="noopener">📖 查看使用说明</a>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="statManaged">-</div><div class="lbl">我管理的维度</div></div>
+        <div class="stat"><div class="num" id="statPending">-</div><div class="lbl">待我审批</div></div>
+        <div class="stat"><div class="num" id="statMyReq">-</div><div class="lbl">我的申请</div></div>
+      </div>
+
+      <div class="card">
+        <h2>我的 MCP 凭据 <span class="sub">给 Agent 配知识检索用</span></h2>
+        <div class="kv">
+          <div class="k">MCP 地址</div><div><code id="mcpUrl">https://wiki.ai.ict.cmcc/mcp/</code> <button class="btn ghost sm" onclick="copyText('mcpUrl')">复制</button></div>
+          <div class="k">我的身份</div><div><code id="identityVal" style="word-break:break-all">登录后显示</code></div>
+          <div class="k">apikey</div><div>在 <a href="http://ai-market.ict.cmcc" target="_blank" rel="noopener">HiMarket 开发者门户</a> 查看你的 apikey（开发 → 我的凭据）</div>
+        </div>
+        <div class="hint">把「MCP 地址 + 你的 apikey」填进 Codex / OpenCode / HiMarket 的 MCP 配置里，即可检索你有权限的知识。apikey 代表你的身份，请勿外泄。</div>
+      </div>
+    </section>
+
+    <!-- 维度 -->
+    <section id="tab-dims" style="display:none">
+      <div class="card">
+        <h2>维度列表 <span class="sub" id="dimCount"></span></h2>
+        <div id="dimsTable"></div>
+      </div>
+      <div class="card" id="dimFormCard" style="display:none">
+        <h2>新建 / 修改维度 <span class="sub">登录即可自建（自建即自任管理员）</span></h2>
+        <div class="row">
+          <div><label>维度 ID</label><input id="f_dim_id" placeholder="product-p4"></div>
+          <div><label>类型</label>
+            <select id="f_dim_type">
+              <option value="product">product（产品）</option>
+              <option value="project">project（项目）</option>
+              <option value="platform">platform（平台）</option>
+              <option value="tech">tech（技术域）</option>
+            </select></div>
+          <div><label>显示名</label><input id="f_dim_name" placeholder="产品四"></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div><label>隔离区（bank）</label><input id="f_dim_bank" value="team-knowledge"></div>
+          <div><label>维度管理员 consumer_id（可空）</label><input id="f_dim_admin" placeholder="consumer-xxx"></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="btn" onclick="createDim()">保存</button>
+          <button class="btn ghost" onclick="document.getElementById('dimFormCard').style.display='none'">取消</button>
+        </div>
+        <div class="hint">⚠️ 分隔符用连字符（<code>product-p4</code>），不用冒号</div>
+      </div>
+      <div style="margin-bottom:16px"><button class="btn" id="btnNewDim" onclick="toggleDimForm()">+ 新建维度</button></div>
+    </section>
+
+    <!-- 授权 -->
+    <section id="tab-grants" style="display:none">
+      <div class="card">
+        <h2>挂载授权 <span class="sub">谁 → 哪个维度 → 什么权限</span></h2>
+        <div class="row">
+          <div><label>维度 ID（可空=全部）</label><input id="g_filter_dim" placeholder="product-p1"></div>
+          <div><label>消费者（可空=全部）</label><input id="g_filter_consumer" placeholder="consumer-xxx"></div>
+          <div style="flex:0 0 auto"><button class="btn ghost" onclick="loadGrants()">查询</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>授权记录 <span class="sub" id="grantCount"></span></h2>
+        <div id="grantsTable"></div>
+      </div>
+      <div class="card" id="grantFormCard">
+        <h2>设置授权 <span class="sub">管理员直接授权</span></h2>
+        <div class="row">
+          <div><label>消费者 consumer_id</label><input id="g_consumer" placeholder="consumer-xxx"></div>
+          <div><label>维度 ID</label><input id="g_dim" placeholder="product-p1"></div>
+          <div><label>权限</label>
+            <select id="g_perm">
+              <option value="read">read（只读）</option>
+              <option value="write">write（可积累）</option>
+              <option value="none">none（撤销）</option>
+            </select></div>
+          <div style="flex:0 0 auto"><button class="btn" onclick="setGrant()">提交</button></div>
+        </div>
+        <div class="hint">普通员工请走「申请 / 审批」Tab 提交申请，由维度管理员审批；直接授权仅管理员用于快速配置。</div>
+      </div>
+    </section>
+
+    <!-- 项目 -->
+    <section id="tab-projects" style="display:none">
+      <div class="card">
+        <h2>项目集成的产品 <span class="sub">项目成员将自动获得这些产品的知识</span></h2>
+        <div class="row">
+          <div><label>项目维度 ID</label><input id="p_project" value="project-prj1"></div>
+          <div style="flex:0 0 auto"><button class="btn ghost" onclick="loadProject()">查询</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>成员 <span class="sub" id="projCount"></span></h2>
+        <div id="projTable"></div>
+      </div>
+      <div class="card">
+        <h2>添加产品</h2>
+        <div class="row">
+          <div><label>产品维度 ID</label><input id="p_product" placeholder="product-p4"></div>
+          <div style="flex:0 0 auto"><button class="btn" onclick="addProjectMember()">加入</button></div>
+        </div>
+        <div class="hint">⚠️ 产品必须与项目在<strong>同一隔离区</strong>，否则成员检索不到（Hindsight 检索是单隔离区的）</div>
+      </div>
+    </section>
+
+    <!-- 申请 / 审批 -->
+    <section id="tab-requests" style="display:none">
+      <div class="card">
+        <h2>提交申请 <span class="sub">加入维度，或让项目引用别人的产品</span></h2>
+        <div class="row">
+          <div><label>申请类型</label>
+            <select id="r_kind">
+              <option value="join">join（申请挂载维度）</option>
+              <option value="reference">reference（项目引用产品）</option>
+            </select></div>
+          <div id="r_dim_box"><label>维度 ID（join 用）</label><input id="r_dim" placeholder="product-p1"></div>
+          <div id="r_perm_box"><label>期望权限</label>
+            <select id="r_perm">
+              <option value="read">read（只读）</option>
+              <option value="write">write（可积累）</option>
+            </select></div>
+          <div id="r_proj_box" style="display:none"><label>项目 ID（reference 用）</label><input id="r_project" placeholder="project-prj1"></div>
+          <div id="r_prod_box" style="display:none"><label>产品 ID（reference 用）</label><input id="r_product" placeholder="product-p2"></div>
+          <div style="flex:0 0 auto"><button class="btn" onclick="submitRequest()">提交申请</button></div>
+        </div>
+        <div class="hint">加入别人维度 / 引用别人产品 → 由对方管理员审批后生效</div>
+      </div>
+      <div class="card">
+        <h2>我的申请 <span class="sub" id="myReqCount"></span></h2>
+        <div id="myReqTable"></div>
+      </div>
+      <div class="card">
+        <h2>待我审批 <span class="sub" id="pendReqCount"></span></h2>
+        <div id="pendReqTable"></div>
+      </div>
+    </section>
+
+    <!-- 凭据 -->
+    <section id="tab-creds" style="display:none">
+      <div class="card">
+        <h2>已登记凭据 <span class="sub" id="credCount"></span></h2>
+        <div id="credsTable"></div>
+        <div class="hint">凭据由 HiMarket 同步而来；未登记的用户无法通过认证</div>
+      </div>
+      <div class="card">
+        <h2>从 HiMarket 同步 <span class="sub">仅平台管理员</span></h2>
+        <div class="hint" style="margin-bottom:10px">
+          同步动作由脚本完成（需读 HiMarket 的 MySQL）：<br>
+          <code>bash k8s/scripts/sync-himarket-creds.sh</code>
+        </div>
+        <button class="btn ghost" onclick="loadCreds()">刷新列表</button>
+      </div>
+    </section>
+
+    <!-- 审计 -->
+    <section id="tab-audit" style="display:none">
+      <div class="card">
+        <h2>审计日志 <span class="sub">仅平台管理员</span></h2>
+        <div class="row" style="margin-bottom:12px">
+          <div style="flex:0 0 140px"><label>条数</label><input id="a_limit" type="number" value="50"></div>
+          <div style="flex:0 0 auto"><button class="btn ghost" onclick="loadAudit()">刷新</button></div>
+        </div>
+        <div id="auditTable"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// 状态
+// ══════════════════════════════════════════════════════════════════════════
+let TOKEN = sessionStorage.getItem('wiki_token') || '';
+let ME = null;
+let OIDC = { enabled: false, user: null };
+
+// ══════════════════════════════════════════════════════════════════════════
+// HTTP
+//   ⭐ OIDC 会话走 cookie（浏览器自动带），令牌方式走 Authorization 头。
+//      两者可并存：有 TOKEN 就带头，cookie 由浏览器自动携带。
+// ══════════════════════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  const opt = { method, headers: {}, credentials: 'same-origin' };
+  if (TOKEN) opt.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body !== undefined) {
+    opt.headers['Content-Type'] = 'application/json';
+    opt.body = JSON.stringify(body);
+  }
+  const r = await fetch(path, opt);
+  let data = null;
+  const txt = await r.text();
+  try { data = JSON.parse(txt); } catch (e) { data = { _raw: txt }; }
+  if (!r.ok) {
+    // 401 且 OIDC 可用 → 自动跳登录（会话过期时体验更好）
+    if (r.status === 401 && OIDC.enabled && !TOKEN) {
+      location.href = '/ext/oauth/login';
+      return new Promise(() => {});
+    }
+    const msg = (data && data.detail) ? data.detail : ('HTTP ' + r.status);
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function toast(msg, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (kind || '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'toast'; }, 4000);
+}
+
+function esc(s) {
+  return String(s == null ? '-' : s).replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function table(rows, cols) {
+  if (!rows || !rows.length) return '<div class="empty">暂无数据</div>';
+  let h = '<table><thead><tr>' +
+    cols.map(c => `<th class="${c.mono?'mono':''}">${esc(c.title)}</th>`).join('') +
+    '</tr></thead><tbody>';
+  for (const r of rows) {
+    h += '<tr>' + cols.map(c => {
+      const v = c.render ? c.render(r) : esc(r[c.key]);
+      return `<td class="${c.mono?'mono':''}">${v}</td>`;
+    }).join('') + '</tr>';
+  }
+  return h + '</tbody></table>';
+}
+
+function permBadge(p) {
+  const cls = p === 'write' ? 'ok' : (p === 'read' ? '' : 'err');
+  return `<span class="badge ${cls}">${esc(p)}</span>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 登录
+//   ⭐ 优先 OIDC 会话（cookie）；令牌作为兼容方式。
+// ══════════════════════════════════════════════════════════════════════════
+async function doLogin() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { document.getElementById('loginErr').textContent = '请输入令牌'; return; }
+  TOKEN = t;
+  try {
+    ME = await api('GET', 'whoami');
+    sessionStorage.setItem('wiki_token', TOKEN);
+    showApp();
+  } catch (e) {
+    TOKEN = '';
+    document.getElementById('loginErr').textContent = '登录失败：' + e.message;
+  }
+}
+
+function showApp() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display = 'block';
+  const isAdmin = ME.is_platform_admin;
+  const who = ME.username || ME.consumer_id;
+  const src = ME.source === 'oidc' ? '统一登录' : '令牌';
+  document.getElementById('whoBox').innerHTML =
+    `<b>${esc(who)}</b> ` +
+    `<span class="badge ${isAdmin?'admin':''}">${isAdmin?'平台管理员':'维度管理员'}</span> ` +
+    `<span class="badge">${src}</span> ` +
+    `<button class="btn ghost sm" onclick="logout()">退出</button>`;
+  // 非管理员隐藏平台级功能（凭据/审计）；但「新建维度」对所有人开放（自建即自任管理员）
+  document.getElementById('btnNewDim').style.display = '';
+  // ⭐ 凭据与审计是平台级资源 → 非管理员隐藏 Tab（避免点进去报 403）
+  document.querySelector('nav button[data-tab="creds"]').style.display = isAdmin ? '' : 'none';
+  document.querySelector('nav button[data-tab="audit"]').style.display = isAdmin ? '' : 'none';
+  // ⭐ 直接授权表单仅管理员可见（普通员工走「申请/审批」流程）
+  document.getElementById('grantFormCard').style.display = isAdmin ? '' : 'none';
+  if (ME.managed_dims && ME.managed_dims.length) {
+    document.getElementById('bankBadge').textContent =
+      `可管 ${ME.managed_dims.length} 个维度`;
+  }
+
+  // ── 填充首页 ──
+  const hello = who ? `你好，${who}` : '你好 👋';
+  document.getElementById('welcomeTitle').textContent = hello + ' 👋';
+  const roleTip = isAdmin ? '你是平台管理员，可管理所有维度与审批。'
+    : (ME.managed_dims && ME.managed_dims.length)
+      ? `你管理 ${ME.managed_dims.length} 个维度，可审批这些维度的申请。`
+      : '你可以申请加入别人的维度，或新建自己的维度。';
+  document.getElementById('welcomeDesc').textContent =
+    '这里是跨团队知识共享平台：检索团队沉淀的知识，或把验证过的经验写进来，让知识在团队间流转复用。' + roleTip;
+  document.getElementById('identityVal').textContent = ME.consumer_id || (ME.username ? '(OIDC) ' + ME.username : '-');
+  // 统计
+  document.getElementById('statManaged').textContent = (ME.managed_dims || []).length;
+  document.getElementById('statMyReq').textContent = (ME.granted_dims || []).length;
+  // 待我审批数（异步刷新）
+  refreshPendingCount();
+  loadDims();
+}
+
+async function refreshPendingCount() {
+  try {
+    const d = await api('GET', 'requests?scope=pending');
+    document.getElementById('statPending').textContent = d.count ?? 0;
+  } catch (e) { document.getElementById('statPending').textContent = '-'; }
+}
+
+function switchTab(tab) {
+  const btn = document.querySelector(`nav button[data-tab="${tab}"]`);
+  if (btn) btn.onclick();
+}
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  const text = el.textContent.trim();
+  if (!text || text === '登录后显示') { toast('暂无内容可复制', 'err'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast('✅ 已复制', 'ok'))
+      .catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast('✅ 已复制', 'ok'); }
+  catch (e) { toast('复制失败，请手动复制', 'err'); }
+  document.body.removeChild(ta);
+}
+
+function logout() {
+  TOKEN = ''; ME = null;
+  sessionStorage.removeItem('wiki_token');
+  // ⭐ OIDC 会话在服务端 cookie 里 → 走服务端登出（同时清 cookie 并跳 Keycloak 登出）
+  if (OIDC.enabled && !TOKEN) {
+    location.href = '/ext/oauth/logout';
+    return;
+  }
+  document.getElementById('appView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'block';
+  document.getElementById('tokenInput').value = '';
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 启动：先探测登录方式
+//   ① OIDC 已启用且已登录 → 直接进主界面
+//   ② OIDC 已启用未登录   → 显示「用统一账号登录」按钮
+//   ③ OIDC 未启用         → 只显示令牌输入
+// ══════════════════════════════════════════════════════════════════════════
+async function boot() {
+  try {
+    const me = await api('GET', 'oauth/me');
+    OIDC = { enabled: !!me.oidc_enabled, user: me.user || null };
+    if (me.authenticated) {
+      // 已登录：直接用 whoami 进主界面
+      ME = await api('GET', 'whoami');
+      showApp();
+      return;
+    }
+    if (me.oidc_enabled) {
+      document.getElementById('oidcBox').style.display = 'block';
+      document.getElementById('oidcDivider').style.display = 'block';
+    }
+  } catch (e) {
+    // 探测失败不阻塞 —— 退回令牌方式
+    console.warn('登录方式探测失败:', e);
+  }
+  document.getElementById('loginView').style.display = 'block';
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 维度
+// ══════════════════════════════════════════════════════════════════════════
+async function loadDims() {
+  try {
+    const d = await api('GET', 'dims');
+    document.getElementById('dimCount').textContent = `共 ${d.count} 个`;
+    document.getElementById('dimsTable').innerHTML = table(d.dims, [
+      { key:'dim_id', title:'维度 ID', mono:true },
+      { key:'dim_type', title:'类型' },
+      { key:'name', title:'名称' },
+      { key:'bank_id', title:'隔离区', mono:true },
+      { key:'admin_consumer_id', title:'管理员', mono:true,
+        render: r => r.admin_consumer_id
+          ? esc(r.admin_consumer_id.slice(0,26)) + '…' : '<span class="badge warn">未指定</span>' },
+      { key:'status', title:'状态' },
+      { title:'操作', render: r =>
+        `<button class="btn ghost sm" onclick="showDetail('${esc(r.dim_id)}')">详情</button>` },
+    ]);
+  } catch (e) { toast('加载维度失败：' + e.message, 'err'); }
+}
+
+function toggleDimForm() {
+  const c = document.getElementById('dimFormCard');
+  c.style.display = c.style.display === 'none' ? 'block' : 'none';
+}
+
+async function createDim() {
+  const body = {
+    dim_id: document.getElementById('f_dim_id').value.trim(),
+    dim_type: document.getElementById('f_dim_type').value,
+    name: document.getElementById('f_dim_name').value.trim(),
+    bank_id: document.getElementById('f_dim_bank').value.trim(),
+    admin_consumer_id: document.getElementById('f_dim_admin').value.trim() || null,
+  };
+  if (!body.dim_id || !body.name || !body.bank_id) {
+    toast('维度 ID / 显示名 / 隔离区 必填', 'err'); return;
+  }
+  try {
+    await api('POST', 'dims', body);
+    toast('✅ 维度已保存：' + body.dim_id, 'ok');
+    toggleDimForm();
+    loadDims();
+  } catch (e) { toast('保存失败：' + e.message, 'err'); }
+}
+
+async function showDetail(dimId) {
+  try {
+    const d = await api('GET', 'dims/' + encodeURIComponent(dimId));
+    let html = `<div class="kv">
+      <div class="k">维度 ID</div><div><code>${esc(d.dim_id)}</code></div>
+      <div class="k">类型</div><div>${esc(d.dim_type)}</div>
+      <div class="k">名称</div><div>${esc(d.name)}</div>
+      <div class="k">检索标签</div><div><code>${esc(d.tag_prefix)}</code></div>
+      <div class="k">隔离区</div><div><code>${esc(d.bank_id)}</code></div>
+      <div class="k">管理员</div><div>${esc(d.admin_consumer_id) || '未指定'}</div>
+    </div>`;
+    if (d.members && d.members.length) {
+      html += `<h2 style="margin-top:16px">集成的产品（${d.members.length}）</h2>` +
+        d.members.map(m => `<div>· <code>${esc(m.product_dim_id)}</code></div>`).join('');
+    }
+    document.getElementById('dimsTable').innerHTML = html +
+      `<div style="margin-top:14px"><button class="btn ghost" onclick="loadDims()">返回列表</button></div>`;
+  } catch (e) { toast('加载详情失败：' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 授权
+// ══════════════════════════════════════════════════════════════════════════
+async function loadGrants() {
+  const dim = document.getElementById('g_filter_dim').value.trim();
+  const con = document.getElementById('g_filter_consumer').value.trim();
+  const qs = [];
+  if (dim) qs.push('dim_id=' + encodeURIComponent(dim));
+  if (con) qs.push('consumer_id=' + encodeURIComponent(con));
+  try {
+    const d = await api('GET', 'grants' + (qs.length ? '?' + qs.join('&') : ''));
+    document.getElementById('grantCount').textContent = `共 ${d.count} 条`;
+    document.getElementById('grantsTable').innerHTML = table(d.grants, [
+      { key:'consumer_id', title:'消费者', mono:true,
+        render: r => esc(String(r.consumer_id).slice(0,28)) + '…' },
+      { key:'dim_id', title:'维度', mono:true },
+      { key:'permission', title:'权限', render: r => permBadge(r.permission) },
+      { key:'status', title:'状态',
+        render: r => `<span class="badge ${r.status==='APPROVED'?'ok':'err'}">${esc(r.status)}</span>` },
+      { key:'granted_by', title:'授权人', mono:true },
+      { title:'操作', render: r => r.status === 'APPROVED'
+        ? `<button class="btn danger sm" onclick="revoke('${esc(r.consumer_id)}','${esc(r.dim_id)}')">撤销</button>`
+        : '' },
+    ]);
+  } catch (e) { toast('加载授权失败：' + e.message, 'err'); }
+}
+
+async function setGrant() {
+  const body = {
+    consumer_id: document.getElementById('g_consumer').value.trim(),
+    dim_id: document.getElementById('g_dim').value.trim(),
+    permission: document.getElementById('g_perm').value,
+  };
+  if (!body.consumer_id || !body.dim_id) { toast('消费者与维度必填', 'err'); return; }
+  try {
+    await api('PUT', 'grants', body);
+    toast(body.permission === 'none' ? '✅ 已撤销' : `✅ 已设为 ${body.permission}`, 'ok');
+    loadGrants();
+  } catch (e) { toast('操作失败：' + e.message, 'err'); }
+}
+
+async function revoke(consumerId, dimId) {
+  if (!confirm(`确认撤销？\n${consumerId}\n← ${dimId}`)) return;
+  try {
+    await api('DELETE', 'grants', { consumer_id: consumerId, dim_id: dimId });
+    toast('✅ 已撤销（立即生效）', 'ok');
+    loadGrants();
+  } catch (e) { toast('撤销失败：' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 项目 ↔ 产品
+// ══════════════════════════════════════════════════════════════════════════
+async function loadProject() {
+  const pid = document.getElementById('p_project').value.trim();
+  if (!pid) { toast('请输入项目维度 ID', 'err'); return; }
+  try {
+    const d = await api('GET', `projects/${encodeURIComponent(pid)}/members`);
+    document.getElementById('projCount').textContent = `共 ${d.count} 个产品`;
+    document.getElementById('projTable').innerHTML = table(d.members, [
+      { key:'product_dim_id', title:'产品维度 ID', mono:true },
+      { key:'created_by', title:'加入人', mono:true },
+      { title:'操作', render: r =>
+        `<button class="btn danger sm" onclick="removeProjectMember('${esc(pid)}','${esc(r.product_dim_id)}')">移除</button>` },
+    ]);
+  } catch (e) { toast('加载失败：' + e.message, 'err'); }
+}
+
+async function addProjectMember() {
+  const pid = document.getElementById('p_project').value.trim();
+  const prod = document.getElementById('p_product').value.trim();
+  if (!pid || !prod) { toast('项目与产品 ID 必填', 'err'); return; }
+  try {
+    await api('POST', `projects/${encodeURIComponent(pid)}/members`, { product_dim_id: prod });
+    toast('✅ 已加入：' + prod, 'ok');
+    loadProject();
+  } catch (e) { toast('加入失败：' + e.message, 'err'); }
+}
+
+async function removeProjectMember(pid, prod) {
+  if (!confirm(`从 ${pid} 移除 ${prod}？`)) return;
+  try {
+    await api('DELETE', `projects/${encodeURIComponent(pid)}/members/${encodeURIComponent(prod)}`);
+    toast('✅ 已移除', 'ok');
+    loadProject();
+  } catch (e) { toast('移除失败：' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 申请 / 审批
+// ══════════════════════════════════════════════════════════════════════════
+function reqKindBadge(k) {
+  const cls = k === 'join' ? 'ok' : '';
+  const label = k === 'join' ? '挂载维度' : '引用产品';
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function reqStatusBadge(s) {
+  const cls = s === 'APPROVED' ? 'ok' : (s === 'REJECTED' ? 'err' : 'warn');
+  const label = s === 'APPROVED' ? '已同意' : (s === 'REJECTED' ? '已拒绝' : '待审批');
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function toggleRequestKind() {
+  const k = document.getElementById('r_kind').value;
+  const isJoin = k === 'join';
+  document.getElementById('r_dim_box').style.display = isJoin ? '' : 'none';
+  document.getElementById('r_perm_box').style.display = isJoin ? '' : 'none';
+  document.getElementById('r_proj_box').style.display = isJoin ? 'none' : '';
+  document.getElementById('r_prod_box').style.display = isJoin ? 'none' : '';
+}
+
+async function submitRequest() {
+  const kind = document.getElementById('r_kind').value;
+  const body = { kind };
+  if (kind === 'join') {
+    body.dim_id = document.getElementById('r_dim').value.trim();
+    body.permission = document.getElementById('r_perm').value;
+    if (!body.dim_id) { toast('维度 ID 必填', 'err'); return; }
+  } else {
+    body.project_dim_id = document.getElementById('r_project').value.trim();
+    body.product_dim_id = document.getElementById('r_product').value.trim();
+    if (!body.project_dim_id || !body.product_dim_id) { toast('项目与产品 ID 必填', 'err'); return; }
+  }
+  try {
+    await api('POST', 'requests', body);
+    toast('✅ 已提交申请，等待对方管理员审批', 'ok');
+    loadMyRequests();
+    loadPendingRequests();
+  } catch (e) { toast('提交失败：' + e.message, 'err'); }
+}
+
+async function loadMyRequests() {
+  try {
+    const d = await api('GET', 'requests?scope=mine');
+    document.getElementById('myReqCount').textContent = `共 ${d.count} 条`;
+    document.getElementById('myReqTable').innerHTML = table(d.requests, [
+      { key:'id', title:'ID', mono:true },
+      { key:'kind', title:'类型', render: r => reqKindBadge(r.kind) },
+      { key:'dim_id', title:'维度', mono:true },
+      { key:'product_dim_id', title:'产品', mono:true },
+      { key:'permission', title:'权限', render: r => permBadge(r.permission) },
+      { key:'status', title:'状态', render: r => reqStatusBadge(r.status) },
+    ]);
+  } catch (e) { toast('加载申请失败：' + e.message, 'err'); }
+}
+
+async function loadPendingRequests() {
+  try {
+    const d = await api('GET', 'requests?scope=pending');
+    document.getElementById('pendReqCount').textContent = `共 ${d.count} 条`;
+    document.getElementById('pendReqTable').innerHTML = table(d.requests, [
+      { key:'id', title:'ID', mono:true },
+      { key:'kind', title:'类型', render: r => reqKindBadge(r.kind) },
+      { key:'requester_id', title:'申请人', mono:true,
+        render: r => esc(String(r.requester_id).slice(0,28)) + '…' },
+      { key:'dim_id', title:'维度', mono:true },
+      { key:'product_dim_id', title:'产品', mono:true },
+      { key:'permission', title:'权限', render: r => permBadge(r.permission) },
+      { title:'操作', render: r =>
+        `<button class="btn sm" onclick="decideReq(${r.id},'APPROVED')">同意</button> ` +
+        `<button class="btn danger sm" onclick="decideReq(${r.id},'REJECTED')">拒绝</button>` },
+    ]);
+  } catch (e) { toast('加载待审批失败：' + e.message, 'err'); }
+}
+
+async function decideReq(id, decision) {
+  try {
+    await api('POST', `requests/${id}/decide`, { decision });
+    toast(decision === 'APPROVED' ? '✅ 已同意' : '✅ 已拒绝', 'ok');
+    loadMyRequests();
+    loadPendingRequests();
+  } catch (e) { toast('审批失败：' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 凭据
+// ══════════════════════════════════════════════════════════════════════════
+async function loadCreds() {
+  try {
+    const d = await api('GET', 'credentials');
+    document.getElementById('credCount').textContent = `共 ${d.count} 条`;
+    document.getElementById('credsTable').innerHTML = table(d.credentials, [
+      { key:'consumer_id', title:'消费者', mono:true,
+        render: r => esc(String(r.consumer_id).slice(0,28)) + '…' },
+      { key:'username', title:'用户名' },
+      { key:'api_key_prefix', title:'凭据前缀', mono:true },
+      { key:'status', title:'状态',
+        render: r => `<span class="badge ${r.status==='ACTIVE'?'ok':'err'}">${esc(r.status)}</span>` },
+      { key:'synced_at', title:'同步时间', mono:true },
+    ]);
+  } catch (e) { toast('加载凭据失败：' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 审计
+// ══════════════════════════════════════════════════════════════════════════
+async function loadAudit() {
+  const n = document.getElementById('a_limit').value || 50;
+  try {
+    const d = await api('GET', 'audit?limit=' + n);
+    document.getElementById('auditTable').innerHTML = table(d.items, [
+      { key:'created_at', title:'时间', mono:true },
+      { key:'actor', title:'操作者', mono:true },
+      { key:'action', title:'动作',
+        render: r => `<span class="badge ${r.action==='revoke'?'err':(r.action==='grant'?'ok':'')}">${esc(r.action)}</span>` },
+      { key:'target', title:'目标', mono:true },
+    ]);
+  } catch (e) { toast('加载审计失败：' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Tab 切换
+// ══════════════════════════════════════════════════════════════════════════
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    ['home','dims','grants','projects','requests','creds','audit'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = (t === tab) ? '' : 'none';
+    });
+    if (tab === 'home') refreshPendingCount();
+    if (tab === 'dims') loadDims();
+    if (tab === 'grants') loadGrants();
+    if (tab === 'projects') loadProject();
+    if (tab === 'requests') { toggleRequestKind(); loadMyRequests(); loadPendingRequests(); }
+    if (tab === 'creds') loadCreds();
+    if (tab === 'audit') loadAudit();
+  };
+});
+
+document.getElementById('tokenInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ⭐ 启动：探测登录方式（OIDC 会话优先，令牌兼容）
+boot();
+</script>
+</body>
+</html>
