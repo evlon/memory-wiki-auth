@@ -54,7 +54,7 @@ class DimAuthAdminExtension(HttpExtension):
         HINDSIGHT_API_HTTP_DIM_SCHEMA=wiki_auth   （可选）
 
         ⭐ OIDC 登录（推荐）：
-        WIKI_OIDC_ISSUER=http://auth.example.com/realms/himarket
+        WIKI_OIDC_ISSUER=http://auth.example.com/realms/employees
         WIKI_OIDC_CLIENT_ID=wiki-portal
         WIKI_OIDC_CLIENT_SECRET=<secret>
         WIKI_OIDC_REDIRECT_URI=http://wiki.example.com/ext/oauth/callback

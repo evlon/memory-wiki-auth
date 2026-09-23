@@ -126,11 +126,15 @@ class OidcClient:
     Keycloak OIDC 客户端（授权码 + PKCE）。
 
     配置（环境变量）：
-        WIKI_OIDC_ISSUER       http://auth.example.com/realms/himarket
-        WIKI_OIDC_CLIENT_ID    wiki-portal
-        WIKI_OIDC_CLIENT_SECRET <secret>
-        WIKI_OIDC_REDIRECT_URI http://wiki.example.com/ext/oauth/callback
-        WIKI_OIDC_SESSION_KEY  <用于签名会话 cookie 的密钥>
+        WIKI_OIDC_ISSUER          http://auth.example.com/realms/employees
+        WIKI_OIDC_CLIENT_ID       wiki-portal
+        WIKI_OIDC_CLIENT_SECRET   <secret>
+        WIKI_OIDC_REDIRECT_URI    http://wiki.example.com/ext/oauth/callback
+        WIKI_OIDC_SESSION_KEY     <用于签名会话 cookie 的密钥>
+        WIKI_OIDC_CA_FILE         <内网根 CA bundle 路径，可选>
+                                  ⭐ 自签内网 Keycloak（ICT Internal AI Root CA）
+                                    必须配；不配则 httpx 用 certifi 官方栈，
+                                    无法验证自签证书 → token 交换 ConnectError。
     """
 
     def __init__(self, config: dict[str, str] | None = None):
@@ -154,10 +158,20 @@ class OidcClient:
         self.redirect_uri = pick("redirect_uri", "WIKI_OIDC_REDIRECT_URI")
         self.session_key = pick("session_key", "WIKI_OIDC_SESSION_KEY")
         self.scope = pick("scope", "WIKI_OIDC_SCOPE", "openid profile email phone")
-        # ⭐ 是否跳过 TLS 证书校验（auth.ict.cmcc 是内网自签证书）。
-        #    显式配置 true（或 1/yes/on）→ verify=False；缺省严格校验。
-        skip = pick("insecure_skip_verify", "WIKI_OIDC_INSECURE_SKIP_VERIFY").strip().lower()
-        self._verify = skip not in ("1", "true", "yes", "on")
+        # ⭐ TLS 证书校验（auth.ict.cmcc 是内网自签证书，由自建
+        #    「ICT Internal AI Root CA」签发，不在官方 CA / 集团 CMCA 栈里）。
+        #
+        #    优先用 WIKI_OIDC_CA_FILE 指定的 CA bundle 文件（含内网根）：
+        #       · httpx 的 verify= 传证书文件路径时用该文件做信任库
+        #       · 只有它能让「自签内网根」通过链验证
+        #    其次才用 WIKI_OIDC_INSECURE_SKIP_VERIFY（显式 true → 全跳过）。
+        #    缺省严格校验（用 httpx 默认 certifi 栈；若内网根已入系统库则可用）。
+        cafile = pick("cafile", "WIKI_OIDC_CA_FILE").strip()
+        if cafile:
+            self._verify: str | bool = cafile
+        else:
+            skip = pick("insecure_skip_verify", "WIKI_OIDC_INSECURE_SKIP_VERIFY").strip().lower()
+            self._verify: str | bool = skip not in ("1", "true", "yes", "on")
 
         self._discovery: dict[str, Any] | None = None
         self._jwks: dict[str, Any] | None = None
@@ -303,7 +317,7 @@ class OidcClient:
         if self.client_secret:
             data["client_secret"] = self.client_secret
 
-        async with httpx.AsyncClient(timeout=15) as c:
+        async with httpx.AsyncClient(timeout=15, verify=self._verify) as c:
             r = await c.post(d["token_endpoint"], data=data,
                              headers={"Content-Type": "application/x-www-form-urlencoded"})
             if r.status_code != 200:
